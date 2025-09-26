@@ -1,0 +1,46 @@
+import streamlit as st
+import pandas as pd
+import os
+
+# Set up storage path on your local system
+storage_folder = "team_data"
+os.makedirs(storage_folder, exist_ok=True)
+
+st.title("Team Data Entry Portal")
+
+# Data entry form
+with st.form("data_entry_form"):
+    team = st.text_input("Team")
+    member = st.text_input("Team Member")
+    month = st.selectbox("Month", ["January", "February", "March", "April", "May", "June",
+                                   "July", "August", "September", "October", "November", "December"])
+    week = st.text_input("Week")
+    forecast = st.number_input("Forecast", min_value=0.0)
+    actual_work = st.number_input("Actual Work", min_value=0.0)
+    save_data = st.form_submit_button("Save")
+
+# Save data to local Excel file
+if save_data:
+    if team and member and month and week:
+        new_data = pd.DataFrame([{
+            "Team": team,
+            "Team Member": member,
+            "Month": month,
+            "Week": week,
+            "Forecast": forecast,
+            "Actual Work": actual_work
+        }])
+
+        file_path = os.path.join(storage_folder, f"{team}.xlsx")
+
+        # Append to existing file or create new
+        if os.path.exists(file_path):
+            existing_data = pd.read_excel(file_path, engine="openpyxl")
+            updated_data = pd.concat([existing_data, new_data], ignore_index=True)
+        else:
+            updated_data = new_data
+
+        updated_data.to_excel(file_path, index=False)
+        st.success(f"Data saved successfully to {file_path}")
+    else:
+        st.error("Please fill in all required fields.")
