@@ -1,64 +1,46 @@
-
 import streamlit as st
 import pandas as pd
 import os
 
-# Load the Excel file and read the Forecast sheet
-excel_file = "Work Forecast - Team Vice.xlsx"
-df = pd.read_excel(excel_file, sheet_name="Forecast", engine="openpyxl")
-
-# Create storage folder
+# Set up storage path on your local system
 storage_folder = "team_data"
 os.makedirs(storage_folder, exist_ok=True)
 
-st.title("Team Forecast and Actual Work Entry")
+st.title("Team Data Entry Portal")
 
-# Dropdown to select team
-teams = sorted(df["Team"].dropna().unique())
-selected_team = st.selectbox("Select Team", teams)
+# Data entry form
+with st.form("data_entry_form"):
+    team = st.text_input("Team")
+    member = st.text_input("Team Member")
+    month = st.selectbox("Month", ["January", "February", "March", "April", "May", "June",
+                                   "July", "August", "September", "October", "November", "December"])
+    week = st.text_input("Week")
+    forecast = st.number_input("Forecast", min_value=0.0)
+    actual_work = st.number_input("Actual Work", min_value=0.0)
+    save_data = st.form_submit_button("Save")
 
-# Dropdown to select team member based on selected team
-members = sorted(df[df["Team"] == selected_team]["Team Member"].dropna().unique())
-selected_member = st.selectbox("Select Team Member", members)
+# Save data to local Excel file
+if save_data:
+    if team and member and month and week:
+        new_data = pd.DataFrame([{
+            "Team": team,
+            "Team Member": member,
+            "Month": month,
+            "Week": week,
+            "Forecast": forecast,
+            "Actual Work": actual_work
+        }])
 
-# Filter data for selected team and member
-filtered_data = df[(df["Team"] == selected_team) & (df["Team Member"] == selected_member)]
+        file_path = os.path.join(storage_folder, f"{team}.xlsx")
 
-# Initialize list to collect updated entries
-updated_entries = []
+        # Append to existing file or create new
+        if os.path.exists(file_path):
+            existing_data = pd.read_excel(file_path, engine="openpyxl")
+            updated_data = pd.concat([existing_data, new_data], ignore_index=True)
+        else:
+            updated_data = new_data
 
-# Display input fields for each month and week
-for _, row in filtered_data.iterrows():
-    month = row["Month"]
-    week = row["Week"]
-    st.markdown(f"**{month} - {week}**")
-    col1, col2 = st.columns(2)
-    with col1:
-        forecast = col1.number_input(
-            f"{month} {week} Forecast",
-            min_value=0.0,
-            value=float(row["Forecast"]) if pd.notna(row["Forecast"]) else 0.0,
-            key=f"{month}_{week}_forecast"
-        )
-    with col2:
-        actual = col2.number_input(
-            f"{month} {week} Actual Work",
-            min_value=0.0,
-            value=float(row["Actual Work"]) if pd.notna(row["Actual Work"]) else 0.0,
-            key=f"{month}_{week}_actual"
-        )
-    updated_entries.append({
-        "Team": selected_team,
-        "Team Member": selected_member,
-        "Month": month,
-        "Week": week,
-        "Forecast": forecast,
-        "Actual Work": actual
-    })
-
-# Save button
-if st.button("Save Data"):
-    save_df = pd.DataFrame(updated_entries)
-    file_path = os.path.join(storage_folder, f"{selected_team}_{selected_member}.xlsx")
-    save_df.to_excel(file_path, index=False)
-    st.success(f"Data saved successfully to {file_path}")
+        updated_data.to_excel(file_path, index=False)
+        st.success(f"Data saved successfully to {file_path}")
+    else:
+        st.error("Please fill in all required fields.")
